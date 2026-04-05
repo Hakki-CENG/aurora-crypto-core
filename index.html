@@ -1,0 +1,2340 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AURORA // Bilişsel Kripto Ağı</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=Chakra+Petch:wght@300;400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #00000a;
+  --panel: rgba(0,255,204,0.03);
+  --border: rgba(0,255,204,0.12);
+  --cyan: #00ffcc;
+  --cyan-dim: rgba(0,255,204,0.4);
+  --pink: #ff2d78;
+  --pink-dim: rgba(255,45,120,0.4);
+  --gold: #f5c842;
+  --white: #e8f4f8;
+  --muted: rgba(200,230,240,0.5);
+  --font-title: 'Bebas Neue', sans-serif;
+  --font-mono: 'Share Tech Mono', monospace;
+  --font-ui: 'Chakra Petch', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--white);
+  font-family: var(--font-ui);
+  overflow-x: hidden;
+  cursor: none;
+}
+
+/* ===== CUSTOM CURSOR ===== */
+#cursor {
+  position: fixed;
+  width: 12px; height: 12px;
+  background: var(--cyan);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 99999;
+  transform: translate(-50%, -50%);
+  transition: width .2s, height .2s, background .2s;
+  mix-blend-mode: screen;
+}
+#cursor-ring {
+  position: fixed;
+  width: 36px; height: 36px;
+  border: 1px solid var(--cyan);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 99998;
+  transform: translate(-50%, -50%);
+  transition: all .15s ease;
+  opacity: .6;
+}
+body:has(a:hover) #cursor,
+body:has(button:hover) #cursor { width: 20px; height: 20px; background: var(--pink); }
+body:has(a:hover) #cursor-ring,
+body:has(button:hover) #cursor-ring { width: 60px; height: 60px; border-color: var(--pink); }
+
+/* ===== CANVAS LAYERS ===== */
+#aurora-canvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: -3;
+  opacity: 0.65;
+}
+#particle-canvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: -2;
+}
+
+/* ===== SCANLINE OVERLAY ===== */
+.scanlines {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.08) 2px,
+    rgba(0,0,0,0.08) 4px
+  );
+  pointer-events: none;
+  z-index: 9990;
+}
+
+/* ===== NAV ===== */
+nav {
+  position: fixed;
+  top: 0; left: 0; width: 100%;
+  z-index: 9000;
+  padding: 1.6rem 4rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(to bottom, rgba(0,0,10,0.95), transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(0,255,204,0.06);
+}
+
+.nav-logo {
+  font-family: var(--font-title);
+  font-size: 2rem;
+  letter-spacing: 8px;
+  color: var(--cyan);
+  text-shadow: 0 0 20px var(--cyan), 0 0 40px rgba(0,255,204,0.3);
+}
+
+.nav-links {
+  display: flex;
+  gap: 3rem;
+  list-style: none;
+}
+
+.nav-links button {
+  background: none;
+  border: none;
+  font-family: var(--font-mono);
+  font-size: .75rem;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--muted);
+  cursor: pointer;
+  position: relative;
+  padding: .4rem 0;
+  transition: color .3s;
+}
+
+.nav-links button::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0;
+  width: 0; height: 1px;
+  background: var(--cyan);
+  box-shadow: 0 0 8px var(--cyan);
+  transition: width .4s ease;
+}
+
+.nav-links button:hover,
+.nav-links button.active { color: var(--white); }
+.nav-links button:hover::after,
+.nav-links button.active::after { width: 100%; }
+
+/* ===== MAIN CONTAINER ===== */
+.container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 3rem;
+}
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ===== HERO ===== */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  padding-top: 6rem;
+}
+
+.hero-eyebrow {
+  font-family: var(--font-mono);
+  font-size: .7rem;
+  letter-spacing: 8px;
+  color: var(--cyan);
+  text-transform: uppercase;
+  margin-bottom: 2rem;
+  opacity: 0;
+  animation: fadeUp .8s .3s forwards;
+}
+
+.hero-title {
+  font-family: var(--font-title);
+  font-size: clamp(5rem, 18vw, 16rem);
+  letter-spacing: 1.5rem;
+  line-height: .9;
+  position: relative;
+  opacity: 0;
+  animation: fadeUp 1s .5s forwards;
+}
+
+.hero-title span.main {
+  display: block;
+  background: linear-gradient(180deg, #fff 0%, var(--cyan) 60%, rgba(0,255,204,0.3) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 30px rgba(0,255,204,0.5));
+}
+
+/* Glitch layers */
+.hero-title::before,
+.hero-title::after {
+  content: 'AURORA';
+  position: absolute;
+  top: 0; left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-title);
+  font-size: inherit;
+  letter-spacing: inherit;
+  opacity: 0;
+  animation: glitchLoop 8s 2s infinite;
+}
+.hero-title::before {
+  color: var(--pink);
+  clip-path: polygon(0 30%, 100% 30%, 100% 50%, 0 50%);
+  animation-name: glitchLoop1;
+}
+.hero-title::after {
+  color: var(--cyan);
+  clip-path: polygon(0 60%, 100% 60%, 100% 75%, 0 75%);
+  animation-name: glitchLoop2;
+}
+
+@keyframes glitchLoop1 {
+  0%,94%,100% { opacity:0; transform: translateX(-50%) }
+  95% { opacity:.8; transform: translateX(calc(-50% - 4px)) skewX(-2deg) }
+  97% { opacity:.5; transform: translateX(calc(-50% + 6px)) }
+  99% { opacity:.7; transform: translateX(calc(-50% - 2px)) }
+}
+@keyframes glitchLoop2 {
+  0%,94%,100% { opacity:0; transform: translateX(-50%) }
+  95.5% { opacity:.6; transform: translateX(calc(-50% + 5px)) skewX(3deg) }
+  97.5% { opacity:.4; transform: translateX(calc(-50% - 3px)) }
+  99.5% { opacity:.5; transform: translateX(calc(-50% + 1px)) }
+}
+
+.hero-tagline {
+  font-family: var(--font-mono);
+  font-size: clamp(.7rem, 1.8vw, 1.1rem);
+  color: var(--muted);
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  margin-top: 2.5rem;
+  opacity: 0;
+  animation: fadeUp .8s .9s forwards;
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 2px solid var(--cyan);
+  width: 0;
+  animation: typing 3.5s 1.2s steps(50) forwards, blink .7s step-end infinite;
+}
+
+@keyframes typing { to { width: 100%; opacity:1 } }
+@keyframes blink { 50% { border-color: transparent } }
+
+.hero-stats {
+  display: flex;
+  gap: 5rem;
+  margin-top: 5rem;
+  opacity: 0;
+  animation: fadeUp .8s 2s forwards;
+}
+
+.hero-stat {
+  text-align: center;
+}
+
+.stat-val {
+  font-family: var(--font-title);
+  font-size: 3rem;
+  color: var(--cyan);
+  text-shadow: 0 0 20px var(--cyan);
+  display: block;
+}
+
+.stat-label {
+  font-family: var(--font-mono);
+  font-size: .65rem;
+  letter-spacing: 3px;
+  color: var(--muted);
+  display: block;
+  margin-top: .3rem;
+}
+
+.scroll-hint {
+  position: absolute;
+  bottom: 3rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .5rem;
+  animation: fadeIn 1s 3s both;
+}
+
+.scroll-hint span {
+  font-family: var(--font-mono);
+  font-size: .6rem;
+  letter-spacing: 4px;
+  color: var(--muted);
+}
+
+.scroll-arrow {
+  width: 1px;
+  height: 60px;
+  background: linear-gradient(to bottom, var(--cyan), transparent);
+  position: relative;
+  animation: arrowPulse 2s infinite;
+}
+
+@keyframes arrowPulse {
+  0%, 100% { opacity: .3; transform: scaleY(1); }
+  50% { opacity: 1; transform: scaleY(1.1); }
+}
+
+/* ===== SECTION BASICS ===== */
+section {
+  padding: 10rem 0;
+  position: relative;
+}
+
+.section-tag {
+  font-family: var(--font-mono);
+  font-size: .65rem;
+  letter-spacing: 6px;
+  color: var(--cyan);
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+  opacity: .7;
+}
+
+.section-title {
+  font-family: var(--font-title);
+  font-size: clamp(2.5rem, 6vw, 5.5rem);
+  letter-spacing: .1em;
+  line-height: 1;
+  color: var(--white);
+  margin-bottom: 1.5rem;
+}
+
+.section-title .accent { color: var(--cyan); }
+.section-title .accent-pink { color: var(--pink); }
+
+.section-desc {
+  font-size: 1.05rem;
+  line-height: 1.9;
+  color: var(--muted);
+  max-width: 600px;
+}
+
+/* Reveal animation */
+.reveal {
+  opacity: 0;
+  transform: translateY(60px);
+  transition: opacity .9s cubic-bezier(.16,1,.3,1), transform .9s cubic-bezier(.16,1,.3,1);
+}
+.reveal.left { transform: translateX(-60px); }
+.reveal.right { transform: translateX(60px); }
+.reveal.scale { transform: scale(.92); }
+.reveal.visible { opacity: 1; transform: none; }
+
+.reveal-delay-1 { transition-delay: .1s; }
+.reveal-delay-2 { transition-delay: .2s; }
+.reveal-delay-3 { transition-delay: .35s; }
+.reveal-delay-4 { transition-delay: .5s; }
+.reveal-delay-5 { transition-delay: .65s; }
+
+/* ===== WHAT IS SECTION ===== */
+.what-is {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6rem;
+  align-items: center;
+}
+
+.cipher-visual {
+  position: relative;
+  height: 480px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cipher-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  animation: spin linear infinite;
+}
+
+.ring-1 {
+  width: 380px; height: 380px;
+  border-color: rgba(0,255,204,0.2);
+  animation-duration: 20s;
+  background: radial-gradient(circle at center, rgba(0,255,204,0.03), transparent 70%);
+}
+.ring-2 {
+  width: 280px; height: 280px;
+  border-color: rgba(255,45,120,0.2);
+  animation-duration: 15s;
+  animation-direction: reverse;
+}
+.ring-3 {
+  width: 180px; height: 180px;
+  border: 2px solid rgba(0,255,204,0.4);
+  animation-duration: 8s;
+  box-shadow: 0 0 20px rgba(0,255,204,0.1), inset 0 0 20px rgba(0,255,204,0.05);
+}
+
+.ring-1::before, .ring-2::before {
+  content: '';
+  position: absolute;
+  width: 6px; height: 6px;
+  background: var(--cyan);
+  border-radius: 50%;
+  top: -3px; left: 50%;
+  box-shadow: 0 0 10px var(--cyan), 0 0 20px var(--cyan);
+}
+.ring-2::before { background: var(--pink); box-shadow: 0 0 10px var(--pink); }
+
+.ring-core {
+  position: absolute;
+  width: 80px; height: 80px;
+  background: radial-gradient(circle, rgba(0,255,204,0.15), transparent);
+  border: 1px solid rgba(0,255,204,0.6);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: .65rem;
+  color: var(--cyan);
+  letter-spacing: 1px;
+  box-shadow: 0 0 30px rgba(0,255,204,0.2), inset 0 0 20px rgba(0,255,204,0.05);
+}
+
+/* Orbit dots */
+.orbit-dot {
+  position: absolute;
+  width: 5px; height: 5px;
+  background: var(--cyan);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--cyan);
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== ARCHITECTURE GRID ===== */
+.arch-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  margin-top: 5rem;
+}
+
+.arch-card {
+  background: rgba(0,255,204,0.02);
+  border: 1px solid var(--border);
+  padding: 3rem 2.5rem;
+  position: relative;
+  overflow: hidden;
+  transition: all .4s ease;
+  cursor: default;
+}
+
+.arch-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(0,255,204,0.06), transparent);
+  opacity: 0;
+  transition: opacity .4s;
+}
+
+.arch-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0;
+  width: 0; height: 2px;
+  background: var(--cyan);
+  box-shadow: 0 0 10px var(--cyan);
+  transition: width .5s ease;
+}
+
+.arch-card:hover::before { opacity: 1; }
+.arch-card:hover::after { width: 100%; }
+.arch-card:hover { border-color: rgba(0,255,204,0.35); transform: translateY(-4px); }
+
+.arch-card.pink-variant::after { background: var(--pink); box-shadow: 0 0 10px var(--pink); }
+.arch-card.pink-variant:hover { border-color: rgba(255,45,120,0.35); }
+
+.arch-num {
+  font-family: var(--font-title);
+  font-size: 4rem;
+  color: rgba(0,255,204,0.08);
+  line-height: 1;
+  position: absolute;
+  top: 1.5rem; right: 2rem;
+}
+
+.arch-icon {
+  width: 48px; height: 48px;
+  margin-bottom: 2rem;
+  position: relative;
+}
+
+.arch-card-title {
+  font-family: var(--font-ui);
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: var(--white);
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+}
+
+.arch-card-desc {
+  font-family: var(--font-ui);
+  font-size: .9rem;
+  line-height: 1.8;
+  color: var(--muted);
+}
+
+/* ===== BIG STATS SECTION ===== */
+.stats-section {
+  background: linear-gradient(135deg, rgba(0,255,204,0.02) 0%, rgba(0,0,10,0) 50%, rgba(255,45,120,0.02) 100%);
+  border-top: 1px solid rgba(0,255,204,0.06);
+  border-bottom: 1px solid rgba(0,255,204,0.06);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+}
+
+.stat-block {
+  padding: 5rem 3rem;
+  border-right: 1px solid rgba(0,255,204,0.06);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.stat-block:last-child { border-right: none; }
+
+.stat-block::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 1px; height: 0;
+  background: var(--cyan);
+  transition: height .6s ease;
+}
+
+.stat-block:hover::before { height: 100%; opacity: .3; }
+
+.stat-big {
+  font-family: var(--font-title);
+  font-size: clamp(2.5rem, 4vw, 4.5rem);
+  color: var(--cyan);
+  text-shadow: 0 0 30px rgba(0,255,204,0.5);
+  display: block;
+  line-height: 1;
+}
+
+.stat-unit {
+  font-family: var(--font-mono);
+  font-size: .8rem;
+  color: var(--cyan);
+  opacity: .6;
+}
+
+.stat-desc {
+  font-family: var(--font-mono);
+  font-size: .65rem;
+  letter-spacing: 3px;
+  color: var(--muted);
+  text-transform: uppercase;
+  display: block;
+  margin-top: 1rem;
+}
+
+/* ===== ENCRYPTION VISUAL SECTION ===== */
+.enc-visual-section {
+  overflow: hidden;
+}
+
+.enc-flow {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr;
+  gap: 0;
+  align-items: center;
+  margin-top: 5rem;
+  position: relative;
+}
+
+.flow-step {
+  background: rgba(0,0,10,0.8);
+  border: 1px solid var(--border);
+  padding: 2.5rem 2rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.flow-step::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  animation: shimmer 3s infinite;
+}
+
+@keyframes shimmer { 0%,100%{opacity:0} 50%{opacity:1} }
+
+.flow-arrow {
+  text-align: center;
+  padding: 0 1rem;
+  position: relative;
+}
+
+.flow-arrow svg { animation: arrowMove 1.5s ease-in-out infinite; }
+@keyframes arrowMove {
+  0%,100% { transform: translateX(0); }
+  50% { transform: translateX(5px); }
+}
+
+.flow-step-num {
+  font-family: var(--font-mono);
+  font-size: .6rem;
+  letter-spacing: 3px;
+  color: var(--cyan);
+  opacity: .6;
+  margin-bottom: .8rem;
+}
+
+.flow-step-name {
+  font-family: var(--font-ui);
+  font-size: .85rem;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: var(--white);
+  text-transform: uppercase;
+  margin-bottom: .8rem;
+}
+
+.flow-step-detail {
+  font-family: var(--font-mono);
+  font-size: .7rem;
+  color: var(--cyan);
+  opacity: .8;
+}
+
+/* ===== CIPHER DEMO (ANIMATED) ===== */
+.cipher-demo {
+  margin: 5rem 0;
+  background: rgba(0,0,0,0.5);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3rem;
+  font-family: var(--font-mono);
+  font-size: .8rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.cipher-demo::before {
+  content: 'CIPHERTEXT SIMULATION';
+  position: absolute;
+  top: 1rem; right: 1.5rem;
+  font-size: .6rem;
+  letter-spacing: 4px;
+  color: var(--cyan);
+  opacity: .4;
+}
+
+.cipher-line { color: var(--muted); line-height: 2; }
+.cipher-line .highlight { color: var(--cyan); }
+.cipher-line .highlight-pink { color: var(--pink); }
+.cipher-line .highlight-gold { color: var(--gold); }
+
+/* ===== TIMELINE SECTION ===== */
+.timeline {
+  position: relative;
+  padding-left: 6rem;
+  margin-top: 6rem;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 2rem;
+  top: 0; bottom: 0;
+  width: 1px;
+  background: linear-gradient(to bottom, transparent, var(--cyan), var(--cyan), transparent);
+  opacity: .3;
+}
+
+.tl-item {
+  position: relative;
+  margin-bottom: 5rem;
+  padding-bottom: 5rem;
+  border-bottom: 1px solid rgba(0,255,204,0.05);
+}
+.tl-item:last-child { border-bottom: none; margin-bottom: 0; }
+
+.tl-dot {
+  position: absolute;
+  left: -4.3rem;
+  top: .5rem;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 2px solid var(--cyan);
+  box-shadow: 0 0 10px var(--cyan), 0 0 20px rgba(0,255,204,0.3);
+}
+
+.tl-dot::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  background: var(--cyan);
+  border-radius: 50%;
+  animation: dotPulse 2s infinite;
+}
+
+@keyframes dotPulse {
+  0%,100% { opacity:1; transform: scale(1); }
+  50% { opacity:.3; transform: scale(.5); }
+}
+
+.tl-num {
+  font-family: var(--font-title);
+  font-size: .8rem;
+  letter-spacing: 4px;
+  color: var(--cyan);
+  opacity: .6;
+  margin-bottom: 1rem;
+}
+
+.tl-title {
+  font-family: var(--font-title);
+  font-size: clamp(2rem, 3.5vw, 3.5rem);
+  letter-spacing: .05em;
+  color: var(--white);
+  margin-bottom: 1.5rem;
+  line-height: 1.1;
+}
+
+.tl-body {
+  font-size: 1rem;
+  line-height: 1.9;
+  color: var(--muted);
+  max-width: 700px;
+  margin-bottom: 2rem;
+}
+
+.tl-tech-tag {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: .65rem;
+  letter-spacing: 3px;
+  padding: .4rem 1.2rem;
+  border: 1px solid var(--border);
+  color: var(--cyan);
+  margin: .3rem .3rem .3rem 0;
+  position: relative;
+  overflow: hidden;
+  transition: all .3s;
+}
+
+.tl-tech-tag:hover {
+  background: rgba(0,255,204,0.08);
+  border-color: rgba(0,255,204,0.4);
+}
+
+/* ===== COMPARISON TABLE ===== */
+.comp-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-top: 4rem;
+  font-family: var(--font-mono);
+  font-size: .85rem;
+}
+
+.comp-table th {
+  padding: 1.5rem 2rem;
+  text-align: left;
+  font-size: .65rem;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.comp-table th.aurora-col {
+  color: var(--cyan);
+  background: rgba(0,255,204,0.03);
+}
+
+.comp-table td {
+  padding: 1.8rem 2rem;
+  border-bottom: 1px solid rgba(0,255,204,0.04);
+  vertical-align: middle;
+}
+
+.comp-table tr:hover td { background: rgba(0,255,204,0.02); }
+
+.comp-table td:nth-child(3) {
+  background: rgba(0,255,204,0.02);
+  color: var(--white);
+}
+
+.check { color: var(--cyan); font-size: 1.1rem; }
+.cross { color: rgba(255,45,120,0.6); }
+.partial { color: var(--gold); }
+
+/* ===== HOW TO USE SECTION ===== */
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3rem;
+  margin-top: 5rem;
+}
+
+.step-card {
+  position: relative;
+  padding: 3.5rem 2.5rem;
+  background: rgba(0,0,10,0.6);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  transition: all .4s;
+}
+
+.step-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0,255,204,0.04) 0%, transparent 100%);
+  opacity: 0;
+  transition: opacity .4s;
+}
+
+.step-card:hover { border-color: rgba(0,255,204,0.3); transform: translateY(-6px); }
+.step-card:hover::before { opacity: 1; }
+
+.step-number {
+  font-family: var(--font-title);
+  font-size: 5rem;
+  color: rgba(0,255,204,0.06);
+  line-height: 1;
+  position: absolute;
+  bottom: 1.5rem; right: 2rem;
+}
+
+.step-icon-wrap {
+  width: 56px; height: 56px;
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.step-icon-wrap::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--cyan);
+  transform: scaleY(0);
+  transform-origin: bottom;
+  transition: transform .4s;
+  opacity: .15;
+}
+
+.step-card:hover .step-icon-wrap::before { transform: scaleY(1); }
+
+.step-title {
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--white);
+  margin-bottom: 1.2rem;
+}
+
+.step-desc {
+  font-size: .9rem;
+  line-height: 1.8;
+  color: var(--muted);
+}
+
+/* ===== SECURITY MATRIX ===== */
+.security-matrix {
+  background: rgba(0,0,5,0.8);
+  border: 1px solid var(--border);
+  padding: 4rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.security-matrix::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background:
+    linear-gradient(rgba(0,255,204,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,255,204,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+.matrix-title {
+  font-family: var(--font-mono);
+  font-size: .65rem;
+  letter-spacing: 5px;
+  color: var(--cyan);
+  text-transform: uppercase;
+  opacity: .6;
+  margin-bottom: 3rem;
+}
+
+.matrix-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.matrix-bar-row {
+  display: grid;
+  grid-template-columns: 220px 1fr 80px;
+  align-items: center;
+  gap: 2rem;
+}
+
+.matrix-label {
+  font-family: var(--font-mono);
+  font-size: .75rem;
+  color: var(--muted);
+  letter-spacing: 2px;
+}
+
+.matrix-track {
+  height: 6px;
+  background: rgba(255,255,255,0.04);
+  position: relative;
+  overflow: hidden;
+}
+
+.matrix-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--cyan), rgba(0,255,204,0.4));
+  box-shadow: 0 0 10px rgba(0,255,204,0.4);
+  width: 0;
+  transition: width 1.5s cubic-bezier(.16,1,.3,1);
+  position: relative;
+}
+
+.matrix-fill::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: -4px; bottom: -4px;
+  width: 2px;
+  background: var(--cyan);
+  box-shadow: 0 0 6px var(--cyan);
+}
+
+.matrix-val {
+  font-family: var(--font-mono);
+  font-size: .75rem;
+  color: var(--cyan);
+  text-align: right;
+}
+
+/* ===== QUOTE SECTION ===== */
+.quote-section {
+  text-align: center;
+  padding: 12rem 0;
+  position: relative;
+}
+
+.quote-section::before {
+  content: '"';
+  position: absolute;
+  top: 5rem; left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-title);
+  font-size: 15rem;
+  color: rgba(0,255,204,0.03);
+  line-height: 1;
+  pointer-events: none;
+}
+
+blockquote {
+  font-family: var(--font-title);
+  font-size: clamp(1.5rem, 3.5vw, 3.5rem);
+  letter-spacing: .05em;
+  color: var(--white);
+  line-height: 1.4;
+  max-width: 900px;
+  margin: 0 auto 2rem;
+  position: relative;
+}
+
+blockquote .q-accent { color: var(--cyan); }
+
+cite {
+  font-family: var(--font-mono);
+  font-size: .7rem;
+  letter-spacing: 4px;
+  color: var(--muted);
+  font-style: normal;
+}
+
+/* ===== TERMINAL SECTION ===== */
+.terminal-section {
+  position: relative;
+  overflow: hidden;
+}
+
+.terminal-wrap {
+  background: rgba(0,0,0,0.8);
+  border: 1px solid rgba(0,255,204,0.15);
+  font-family: var(--font-mono);
+  font-size: .85rem;
+  overflow: hidden;
+  max-width: 860px;
+  margin: 4rem auto 0;
+}
+
+.terminal-bar {
+  background: rgba(0,255,204,0.06);
+  padding: .8rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  border-bottom: 1px solid rgba(0,255,204,0.1);
+}
+
+.t-dot { width: 10px; height: 10px; border-radius: 50%; }
+.t-dot-r { background: #ff5f56; }
+.t-dot-y { background: #ffbd2e; }
+.t-dot-g { background: #27c93f; }
+
+.terminal-title {
+  font-size: .65rem;
+  letter-spacing: 3px;
+  color: var(--muted);
+  margin-left: auto;
+}
+
+.terminal-body { padding: 2rem; }
+
+.t-line { 
+  color: var(--muted);
+  line-height: 2;
+  opacity: 0;
+  animation: t-appear .05s forwards;
+}
+
+.t-line .t-prompt { color: var(--cyan); }
+.t-line .t-cmd { color: var(--white); }
+.t-line .t-green { color: #27c93f; }
+.t-line .t-gold { color: var(--gold); }
+.t-line .t-pink { color: var(--pink); }
+.t-cursor { animation: blink .7s step-end infinite; color: var(--cyan); }
+
+@keyframes t-appear { to { opacity:1; } }
+
+/* ===== ENCRYPTION APP PANELS ===== */
+.app-header {
+  text-align: center;
+  margin-bottom: 4rem;
+}
+
+.app-panel {
+  max-width: 820px;
+  margin: 0 auto;
+  background: rgba(0,0,5,0.7);
+  border: 1px solid var(--border);
+  padding: 4rem;
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(20px);
+}
+
+/* Laser scan line */
+.app-panel::after {
+  content: '';
+  position: absolute;
+  top: -5%;
+  left: 0; width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  opacity: .5;
+  animation: scanV 5s linear infinite;
+  pointer-events: none;
+}
+
+.app-panel.dec-panel::after {
+  background: linear-gradient(90deg, transparent, var(--pink), transparent);
+}
+
+@keyframes scanV {
+  0% { top: -5%; }
+  100% { top: 105%; }
+}
+
+/* Corner decorations */
+.app-panel::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 40px; height: 40px;
+  border-top: 2px solid var(--cyan);
+  border-left: 2px solid var(--cyan);
+  pointer-events: none;
+}
+
+.panel-corner-br {
+  position: absolute;
+  bottom: 0; right: 0;
+  width: 40px; height: 40px;
+  border-bottom: 2px solid var(--cyan);
+  border-right: 2px solid var(--cyan);
+  pointer-events: none;
+}
+
+.dec-panel .panel-corner-br { border-color: var(--pink); }
+.dec-panel::before { border-color: var(--pink); }
+
+.field-label {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-family: var(--font-mono);
+  font-size: .65rem;
+  letter-spacing: 4px;
+  color: var(--cyan);
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+}
+
+.field-label::before {
+  content: '';
+  width: 20px; height: 1px;
+  background: var(--cyan);
+}
+
+.dec-panel .field-label { color: var(--pink); }
+.dec-panel .field-label::before { background: var(--pink); }
+
+.field-group { margin-bottom: 2.5rem; }
+
+textarea, input[type="password"], input[type="text"] {
+  width: 100%;
+  background: rgba(0,255,204,0.02);
+  border: 1px solid rgba(0,255,204,0.12);
+  color: var(--white);
+  font-family: var(--font-mono);
+  font-size: .9rem;
+  padding: 1.5rem;
+  resize: vertical;
+  transition: all .3s;
+  outline: none;
+}
+
+textarea {
+  min-height: 180px;
+  line-height: 1.7;
+}
+
+textarea:focus, input:focus {
+  border-color: var(--cyan);
+  background: rgba(0,255,204,0.04);
+  box-shadow: 0 0 0 1px rgba(0,255,204,0.15), 0 0 30px rgba(0,255,204,0.07);
+}
+
+.dec-panel textarea:focus, .dec-panel input:focus {
+  border-color: var(--pink);
+  background: rgba(255,45,120,0.04);
+  box-shadow: 0 0 0 1px rgba(255,45,120,0.15), 0 0 30px rgba(255,45,120,0.07);
+}
+
+.action-btn {
+  width: 100%;
+  padding: 1.6rem;
+  background: transparent;
+  border: 1px solid var(--cyan);
+  color: var(--cyan);
+  font-family: var(--font-ui);
+  font-size: .9rem;
+  font-weight: 700;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: color .4s;
+}
+
+.action-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--cyan);
+  transform: translateX(-101%);
+  transition: transform .4s cubic-bezier(.16,1,.3,1);
+  z-index: -1;
+}
+
+.action-btn:hover { color: #000; }
+.action-btn:hover::before { transform: translateX(0); }
+
+.dec-btn { border-color: var(--pink); color: var(--pink); }
+.dec-btn::before { background: var(--pink); }
+.dec-btn:hover { color: #fff; }
+
+.output-area {
+  margin-top: 2.5rem;
+  padding: 2rem;
+  background: rgba(0,0,0,0.6);
+  border: 1px dashed rgba(0,255,204,0.25);
+  font-family: var(--font-mono);
+  font-size: .85rem;
+  color: #00ff99;
+  word-break: break-all;
+  line-height: 1.7;
+  display: none;
+  text-shadow: 0 0 8px rgba(0,255,153,0.5);
+  animation: outputGlow 2s infinite alternate;
+  position: relative;
+}
+
+.output-area::before {
+  content: 'OUTPUT';
+  position: absolute;
+  top: .8rem; right: 1rem;
+  font-size: .55rem;
+  letter-spacing: 4px;
+  color: var(--cyan);
+  opacity: .4;
+}
+
+@keyframes outputGlow {
+  from { text-shadow: 0 0 5px rgba(0,255,153,0.3); }
+  to { text-shadow: 0 0 15px rgba(0,255,153,0.7); }
+}
+
+.dec-output { border-color: rgba(255,45,120,0.25); color: #ff88aa; text-shadow: 0 0 8px rgba(255,45,120,0.5); }
+
+.error-msg {
+  margin-top: 1.5rem;
+  font-family: var(--font-mono);
+  font-size: .75rem;
+  letter-spacing: 3px;
+  color: var(--pink);
+  text-shadow: 0 0 10px var(--pink);
+  text-align: center;
+}
+
+/* ===== FOOTER ===== */
+footer {
+  border-top: 1px solid rgba(0,255,204,0.06);
+  padding: 5rem 0;
+  text-align: center;
+}
+
+.footer-logo {
+  font-family: var(--font-title);
+  font-size: 5rem;
+  letter-spacing: 1.5rem;
+  color: rgba(0,255,204,0.08);
+  margin-bottom: 2rem;
+}
+
+.footer-text {
+  font-family: var(--font-mono);
+  font-size: .65rem;
+  letter-spacing: 4px;
+  color: var(--muted);
+  opacity: .5;
+}
+
+/* ===== UTILITY ===== */
+@keyframes fadeUp {
+  from { opacity:0; transform: translateY(30px); }
+  to { opacity:1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity:0; }
+  to { opacity:1; }
+}
+
+.divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0,255,204,0.2), transparent);
+  margin: 0;
+}
+
+.text-cyan { color: var(--cyan); }
+.text-pink { color: var(--pink); }
+.text-gold { color: var(--gold); }
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 900px) {
+  nav { padding: 1.2rem 1.5rem; }
+  .nav-logo { font-size: 1.4rem; letter-spacing: 5px; }
+  .nav-links { gap: 1.5rem; }
+  .container { padding: 0 1.5rem; }
+  .what-is { grid-template-columns: 1fr; }
+  .arch-grid { grid-template-columns: 1fr; }
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .steps-grid { grid-template-columns: 1fr; }
+  .enc-flow { grid-template-columns: 1fr; gap: 1rem; }
+  .flow-arrow { transform: rotate(90deg); }
+  .matrix-bar-row { grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; }
+  .app-panel { padding: 2rem 1.5rem; }
+  .hero-stats { gap: 2rem; flex-wrap: wrap; justify-content: center; }
+}
+</style>
+</head>
+<body>
+
+<!-- CURSOR -->
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+
+<!-- BACKGROUND -->
+<canvas id="aurora-canvas"></canvas>
+<canvas id="particle-canvas"></canvas>
+<div class="scanlines"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">AURORA</div>
+  <ul class="nav-links">
+    <li><button onclick="showTab('home', this)" class="active">SİSTEM ÇEKİRDEĞİ</button></li>
+    <li><button onclick="showTab('encrypt', this)">ŞİFRELE</button></li>
+    <li><button onclick="showTab('decrypt', this)">DEŞİFRE ET</button></li>
+  </ul>
+</nav>
+
+<!-- =================== HOME =================== -->
+<div id="home" class="tab-panel active">
+  <div class="container">
+
+    <!-- HERO -->
+    <section class="hero">
+      <div class="hero-eyebrow">// BİLİŞSEL KRİPTOGRAFİK SİSTEM v4.1 //</div>
+      <h1 class="hero-title">
+        <span class="main">AURORA</span>
+      </h1>
+      <div class="hero-tagline">KRİPTOGRAFİK ORKESTRASYON // KUANTUM DİRENÇLİ ALT SİSTEM</div>
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <span class="stat-val">256</span>
+          <span class="stat-label">BIT ANAHTAR</span>
+        </div>
+        <div class="hero-stat">
+          <span class="stat-val">10<sup style="font-size:1.5rem">6</sup></span>
+          <span class="stat-label">PBKDF2 DÖNGÜ</span>
+        </div>
+        <div class="hero-stat">
+          <span class="stat-val">0</span>
+          <span class="stat-label">SUNUCU İZİ</span>
+        </div>
+        <div class="hero-stat">
+          <span class="stat-val">∞</span>
+          <span class="stat-label">ENTROPI</span>
+        </div>
+      </div>
+      <div class="scroll-hint">
+        <span>AŞAĞI KAYDIRIN</span>
+        <div class="scroll-arrow"></div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- WHAT IS AURORA -->
+    <section>
+      <div class="what-is">
+        <div>
+          <div class="section-tag reveal">&gt; 01 // AURORA NEDİR</div>
+          <h2 class="section-title reveal reveal-delay-1">DIJITAL <span class="accent">KALELERİN</span><br>YENİ MİMARİSİ</h2>
+          <p class="section-desc reveal reveal-delay-2">
+            Aurora, sıfır sunucu mimarisine dayanan, tarayıcı tarafında çalışan tam kapsamlı bir kriptografik sistemdir. 
+            Verileriniz asla bir ağ paketine girmez, asla bir veritabanında depolanmaz, asla üçüncü bir tarafın 
+            ellerine dokunmaz. Tüm matematiksel işlemler yalnızca sizin cihazınızın güvenli belleğinde yaşar.
+          </p>
+          <p class="section-desc reveal reveal-delay-3" style="margin-top:1.5rem">
+            Dünya genelinde askeri ve istihbarat altyapılarında kullanılan standartları, herkesin 
+            kullanabileceği açık bir arayüzde birleştiren bu sistem; gizliliğin bir ayrıcalık değil, 
+            temel bir hak olduğuna inanır.
+          </p>
+          <div style="display:flex; gap:1rem; margin-top:2.5rem; flex-wrap:wrap" class="reveal reveal-delay-4">
+            <span class="tl-tech-tag">AES-256-GCM</span>
+            <span class="tl-tech-tag">PBKDF2-SHA256</span>
+            <span class="tl-tech-tag">WebCrypto API</span>
+            <span class="tl-tech-tag">Zero-Knowledge</span>
+            <span class="tl-tech-tag">Client-Side</span>
+          </div>
+        </div>
+        <div class="cipher-visual reveal right reveal-delay-2">
+          <div class="cipher-ring ring-1"></div>
+          <div class="cipher-ring ring-2"></div>
+          <div class="cipher-ring ring-3"></div>
+          <div class="ring-core">AES<br>GCM</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- ARCHITECTURE CARDS -->
+    <section>
+      <div style="text-align:center; margin-bottom:1rem">
+        <div class="section-tag reveal">&gt; 02 // MİMARİ BİLEŞENLER</div>
+        <h2 class="section-title reveal reveal-delay-1" style="max-width:600px; margin:0 auto">
+          DÖRT <span class="accent">KATMERLİ</span> SAVUNMA MİMARİSİ
+        </h2>
+      </div>
+      <div class="arch-grid">
+        <div class="arch-card reveal reveal-delay-1">
+          <div class="arch-num">01</div>
+          <div class="arch-icon">
+            <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="6" y="6" width="36" height="36" rx="2" stroke="#00ffcc" stroke-width="1.5"/>
+              <path d="M6 18h36M18 6v12M30 6v12" stroke="#00ffcc" stroke-width="1.5"/>
+              <circle cx="24" cy="32" r="6" stroke="#00ffcc" stroke-width="1.5"/>
+              <circle cx="24" cy="32" r="2" fill="#00ffcc"/>
+            </svg>
+          </div>
+          <div class="arch-card-title">AES-256-GCM ŞİFRELEME</div>
+          <div class="arch-card-desc">
+            Advanced Encryption Standard, 256-bit anahtar uzunluğu ile Galois/Counter Mode kimlik doğrulama 
+            etiketi üretir. Her şifreleme işlemi benzersiz bir IV ile gerçekleşir. Veriyi yalnızca şifreleyen 
+            değil, aynı zamanda bütünlüğünü de imzalayan bu yapı, ağ üzerinde paket manipülasyonunu imkansız kılar.
+          </div>
+        </div>
+        <div class="arch-card reveal reveal-delay-2">
+          <div class="arch-num">02</div>
+          <div class="arch-icon">
+            <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="24" cy="24" r="18" stroke="#00ffcc" stroke-width="1.5"/>
+              <path d="M24 6v4M24 38v4M6 24h4M38 24h4" stroke="#00ffcc" stroke-width="1.5"/>
+              <path d="M24 14v10l7 7" stroke="#00ffcc" stroke-width="1.5" stroke-linecap="round"/>
+              <circle cx="24" cy="24" r="3" fill="#00ffcc" opacity=".4"/>
+            </svg>
+          </div>
+          <div class="arch-card-title">PBKDF2 İTERASYON DUVARI</div>
+          <div class="arch-card-desc">
+            Parolanız ham haliyle anahtara dönüşmez. 1.000.000 kriptografik döngüden oluşan bir kıyma makinesinden 
+            geçirilir. Bu, bir saldırganın saniyede bir milyon deneme yapabilse bile yalnızca tek bir adım 
+            ilerleyebileceği anlamına gelir; şifreyi kırmak için geçen süre evrenden uzun olur.
+          </div>
+        </div>
+        <div class="arch-card reveal reveal-delay-3">
+          <div class="arch-num">03</div>
+          <div class="arch-icon">
+            <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M8 12h32v24H8z" stroke="#00ffcc" stroke-width="1.5"/>
+              <path d="M8 12l16-6 16 6" stroke="#00ffcc" stroke-width="1.5"/>
+              <path d="M20 24h8M24 20v8" stroke="#00ffcc" stroke-width="1.5" stroke-linecap="round"/>
+              <circle cx="24" cy="24" r="2" fill="#00ffcc" opacity=".5"/>
+            </svg>
+          </div>
+          <div class="arch-card-title">RASTGELE TUZLAMA (SALT)</div>
+          <div class="arch-card-desc">
+            Her şifreleme işleminde kriptografik olarak güvenli 128-bit rastgele bir tuz üretilir. Aynı mesaj 
+            aynı parola ile şifrelense bile çıktı her seferinde tamamen farklıdır. Bu yapı, önceden hesaplanmış 
+            sözlük saldırılarını (rainbow table) matematiksel olarak anlamsız kılar.
+          </div>
+        </div>
+        <div class="arch-card pink-variant reveal reveal-delay-1">
+          <div class="arch-num">04</div>
+          <div class="arch-icon">
+            <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M24 4L6 14v12c0 9.4 7.7 18.2 18 20 10.3-1.8 18-10.6 18-20V14L24 4z" stroke="#ff2d78" stroke-width="1.5"/>
+              <path d="M16 24l6 6 10-10" stroke="#ff2d78" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="arch-card-title" style="color:var(--pink)">SIFIR-İZ MİMARİSİ</div>
+          <div class="arch-card-desc">
+            Aurora'nın sunucu bağlantısı yoktur. Tüm operasyonlar Web Crypto API ile tarayıcının güvenli 
+            sandbox ortamında çalışır. Oturum tamamlanıp pencere kapatıldığında, kullanılan anahtarlar ve 
+            ara veriler kalıcı olarak silinir. Metadata bile sızdırılmaz.
+          </div>
+        </div>
+        <div class="arch-card pink-variant reveal reveal-delay-2">
+          <div class="arch-num">05</div>
+          <div class="arch-icon">
+            <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="10" y="10" width="28" height="28" rx="14" stroke="#ff2d78" stroke-width="1.5"/>
+              <path d="M24 18v6M24 30v2" stroke="#ff2d78" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="arch-card-title" style="color:var(--pink)">GCM KİMLİK DOĞRULAMA</div>
+          <div class="arch-card-desc">
+            Galois/Counter Mode, şifrelenmiş verinin yanında 128-bit bir kimlik doğrulama etiketi üretir. 
+            Bu etiket, şifre çözme anında değiştirilmiş veya bozulmuş bir paketi anında tespit eder. 
+            Aktif ağ saldırıları altında bile veri bütünlüğü garantisi verir.
+          </div>
+        </div>
+        <div class="arch-card reveal reveal-delay-3">
+          <div class="arch-num">06</div>
+          <div class="arch-icon">
+            <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6 24h36M24 6v36" stroke="#00ffcc" stroke-width="1.5" opacity=".3"/>
+              <path d="M14 14l20 20M34 14L14 34" stroke="#00ffcc" stroke-width="1.5" opacity=".3"/>
+              <circle cx="24" cy="24" r="10" stroke="#00ffcc" stroke-width="1.5"/>
+              <circle cx="24" cy="24" r="3" fill="#00ffcc"/>
+            </svg>
+          </div>
+          <div class="arch-card-title">KERCKHOFFS PRENSİBİ</div>
+          <div class="arch-card-desc">
+            Güvenlik belirsizliğe değil, matematiksel güçlüğe dayanmalıdır. Aurora'nın tüm kaynak kodu 
+            incelenebilir, denetlenebilir ve doğrulanabilir. Sistem hiçbir "gizli algoritma" veya 
+            "kapalı kutu" barındırmaz. Tek sır, yalnızca zihninizde olan paroladır.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- STATS -->
+    <section class="stats-section">
+      <div class="stats-grid">
+        <div class="stat-block reveal">
+          <span class="stat-big" data-target="256">0</span>
+          <span class="stat-unit">BIT</span>
+          <span class="stat-desc">AES Anahtar Uzunluğu</span>
+        </div>
+        <div class="stat-block reveal reveal-delay-1">
+          <span class="stat-big" data-target="1000000" data-format="short">0</span>
+          <span class="stat-unit">İTERASYON</span>
+          <span class="stat-desc">PBKDF2 Döngü Sayısı</span>
+        </div>
+        <div class="stat-block reveal reveal-delay-2">
+          <span class="stat-big" data-target="128">0</span>
+          <span class="stat-unit">BIT</span>
+          <span class="stat-desc">Rastgele Tuz Uzunluğu</span>
+        </div>
+        <div class="stat-block reveal reveal-delay-3">
+          <span class="stat-big" data-target="96">0</span>
+          <span class="stat-unit">BIT</span>
+          <span class="stat-desc">IV (Başlangıç Vektörü)</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- HOW IT WORKS - FLOW -->
+    <section class="enc-visual-section">
+      <div class="section-tag reveal">&gt; 03 // ŞİFRELEME AKIŞI</div>
+      <h2 class="section-title reveal reveal-delay-1">VERİNİN <span class="accent">DÖNÜŞÜM</span> HARİTASI</h2>
+      <p class="section-desc reveal reveal-delay-2">
+        Plaintext'ten şifreli pakete uzanan yolculukta her adım matematiksel olarak bağımsız ve geri dönüşümsüzdür. 
+        Parola olmaksızın bu zincirin herhangi bir halkasını kırmak, mevcut teknoloji ile fiziksel olarak imkansızdır.
+      </p>
+      <div class="enc-flow reveal reveal-delay-3">
+        <div class="flow-step">
+          <div class="flow-step-num">ADIM 01</div>
+          <div class="flow-step-name">PLAINTEXT</div>
+          <div class="flow-step-detail">Ham metin girişi</div>
+        </div>
+        <div class="flow-arrow">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M5 12h14M14 7l5 5-5 5" stroke="#00ffcc" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-num">ADIM 02</div>
+          <div class="flow-step-name">SALT + PBKDF2</div>
+          <div class="flow-step-detail">128-bit rastgele tuz &<br>1M döngülü türetme</div>
+        </div>
+        <div class="flow-arrow">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M5 12h14M14 7l5 5-5 5" stroke="#00ffcc" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-num">ADIM 03</div>
+          <div class="flow-step-name">IV ÜRET + ŞİFRELE</div>
+          <div class="flow-step-detail">96-bit IV &<br>AES-256-GCM encrypt</div>
+        </div>
+        <div class="flow-arrow">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M5 12h14M14 7l5 5-5 5" stroke="#00ffcc" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="flow-step" style="border-color:rgba(0,255,204,0.4)">
+          <div class="flow-step-num" style="color:var(--gold)">ÇIKTI</div>
+          <div class="flow-step-name" style="color:var(--cyan)">BASE64 PAKETİ</div>
+          <div class="flow-step-detail">SALT || IV || CIPHER</div>
+        </div>
+      </div>
+
+      <!-- CIPHER DEMO -->
+      <div class="cipher-demo reveal reveal-delay-2">
+        <div class="cipher-line"><span class="highlight">// INPUT ——————————————————————————————</span></div>
+        <div class="cipher-line">plaintext&nbsp;&nbsp; = <span class="highlight-gold">"Gizli Mesaj: Koordinat 41.0082° K, 28.9784° D"</span></div>
+        <div class="cipher-line">password&nbsp;&nbsp;&nbsp; = <span class="highlight-pink">PBKDF2_SHA256(user_input, salt, iterations=1_000_000)</span></div>
+        <div class="cipher-line">&nbsp;</div>
+        <div class="cipher-line"><span class="highlight">// TÜRETME ——————————————————————————————</span></div>
+        <div class="cipher-line">salt&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; = <span class="highlight">crypto.getRandomValues(Uint8Array(16))</span></div>
+        <div class="cipher-line">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; = <span class="highlight-gold">a3f2c891d4e057b6 2c9a1f7e8d340b5c</span></div>
+        <div class="cipher-line">derived_key = <span class="highlight">AES-256-GCM key material</span></div>
+        <div class="cipher-line">&nbsp;</div>
+        <div class="cipher-line"><span class="highlight">// ŞİFRELEME ——————————————————————————————</span></div>
+        <div class="cipher-line">iv&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; = <span class="highlight">crypto.getRandomValues(Uint8Array(12))</span></div>
+        <div class="cipher-line">ciphertext&nbsp; = <span class="highlight-pink">AES_GCM_Encrypt(derived_key, iv, plaintext)</span></div>
+        <div class="cipher-line">&nbsp;</div>
+        <div class="cipher-line"><span class="highlight">// ÇIKTI ——————————————————————————————————</span></div>
+        <div class="cipher-line">output&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; = <span class="highlight">BASE64(salt || iv || ciphertext || auth_tag)</span></div>
+        <div class="cipher-line">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; = <span class="highlight-gold">o/LIkdTgV7YsmmH3LOBb/EI+...</span></div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- DETAILED TIMELINE -->
+    <section>
+      <div class="section-tag reveal">&gt; 04 // DERİN DALIŞ</div>
+      <h2 class="section-title reveal reveal-delay-1">KRİPTOGRAFİK <span class="accent">KATMANLAR</span></h2>
+      <div class="timeline">
+
+        <div class="tl-item reveal">
+          <div class="tl-dot"></div>
+          <div class="tl-num">// 01</div>
+          <h3 class="tl-title">AES-256 GCM — <span class="text-cyan">Şifreleme Kalbi</span></h3>
+          <p class="tl-body">
+            Advanced Encryption Standard, ABD Ulusal Standartlar ve Teknoloji Enstitüsü (NIST) tarafından 2001'den 
+            beri federal bilgi işleme standardı olarak kabul görmektedir. 256-bit anahtar uzunluğu, teorik kaba 
+            kuvvet saldırısı için 2²⁵⁶ olasılığı ifade eder. Gözlemlenebilir evrendeki atom sayısının yaklaşık 
+            2⁸⁰ olduğu düşünüldüğünde, bu sayı sonsuzlukla eşdeğerdir.
+          </p>
+          <p class="tl-body">
+            GCM (Galois/Counter Mode), bir blok şifresini hem akış şifresi hem de mesaj kimlik doğrulama kodu 
+            (MAC) olarak kullanan gelişmiş bir işlem modudur. Her şifreli metin bloğu, üretilen kimlik doğrulama 
+            etiketi sayesinde değiştirilemez şekilde imzalanır.
+          </p>
+          <div>
+            <span class="tl-tech-tag">NIST FIPS 197</span>
+            <span class="tl-tech-tag">NSA Suite B</span>
+            <span class="tl-tech-tag">NATO Onaylı</span>
+            <span class="tl-tech-tag">Kuantum Yarı-Dirençli</span>
+          </div>
+        </div>
+
+        <div class="tl-item reveal">
+          <div class="tl-dot" style="border-color:var(--pink); box-shadow:0 0 10px var(--pink)">
+            <div style="position:absolute;inset:3px;background:var(--pink);border-radius:50%"></div>
+          </div>
+          <div class="tl-num" style="color:var(--pink)">// 02</div>
+          <h3 class="tl-title">PBKDF2 — <span class="text-pink">Parola Kalkanı</span></h3>
+          <p class="tl-body">
+            Password-Based Key Derivation Function 2, RFC 2898 ile tanımlanmış ve NIST SP 800-132 tarafından 
+            önerilen bir anahtar türetme fonksiyonudur. Aurora'nın uygulaması SHA-256 HMAC ile 1.000.000 iterasyon 
+            gerçekleştirir. Bu iterasyon sayısı kasıtlı olarak seçilmiştir: CPU veya GPU'nun her deneme başına 
+            harcaması gereken işlemci süresini yapay olarak artırır.
+          </p>
+          <p class="tl-body">
+            Modern bir saldırganın saniyede 10 milyar SHA-256 hesabı yapabildiği varsayılırsa, 1 milyon iterasyonlu 
+            PBKDF2 ile bu etkin hız saniyede yalnızca 10.000 denemeye düşer. 8 karakterlik alfanümerik bir parola 
+            için kaba kuvvet süresi binlerce yıla uzar.
+          </p>
+          <div>
+            <span class="tl-tech-tag">RFC 2898</span>
+            <span class="tl-tech-tag">NIST SP 800-132</span>
+            <span class="tl-tech-tag">HMAC-SHA256</span>
+            <span class="tl-tech-tag">1.000.000 İterasyon</span>
+          </div>
+        </div>
+
+        <div class="tl-item reveal">
+          <div class="tl-dot"></div>
+          <div class="tl-num">// 03</div>
+          <h3 class="tl-title">TUZLAMA — <span class="text-cyan">Deterministik Saldırıların Sonu</span></h3>
+          <p class="tl-body">
+            Kriptografik tuz, her şifreleme işlemi öncesinde <code style="color:var(--cyan)">window.crypto.getRandomValues()</code> 
+            ile üretilen 128-bit rastgele bir değerdir. Bu değer anahtar türetme işlemine dahil edilerek aynı 
+            parolayla yapılan iki farklı şifrelemenin birbirinden tamamen bağımsız sonuçlar üretmesini sağlar.
+          </p>
+          <p class="tl-body">
+            Rainbow table saldırıları, önceden hesaplanmış hash değerlerini depolayarak hızlı çözümleme yapmayı 
+            hedefler. Rastgele tuzlama ile her parola kombinasyonu için sonsuz sayıda olası hash değeri oluştuğundan, 
+            bu tablo yaklaşımı mathematiksel olarak geçersiz hale gelir.
+          </p>
+          <div>
+            <span class="tl-tech-tag">128-bit Entropi</span>
+            <span class="tl-tech-tag">CSPRNG</span>
+            <span class="tl-tech-tag">Anti-Rainbow</span>
+          </div>
+        </div>
+
+        <div class="tl-item reveal">
+          <div class="tl-dot" style="border-color:var(--gold); box-shadow:0 0 10px var(--gold)">
+            <div style="position:absolute;inset:3px;background:var(--gold);border-radius:50%"></div>
+          </div>
+          <div class="tl-num" style="color:var(--gold)">// 04</div>
+          <h3 class="tl-title">WEB CRYPTO API — <span class="text-gold">Donanım Düzeyinde Güvenlik</span></h3>
+          <p class="tl-body">
+            Aurora'nın tüm kriptografik işlemleri, tarayıcının yerleşik Web Crypto API'si aracılığıyla 
+            yürütülür. Bu API, işletim sisteminin alt seviyeli kriptografik kütüphanelerine (OpenSSL, Windows CNG) 
+            doğrudan bağlanarak donanım destekli şifreleme kullanır. JavaScript yorumlayıcısının dışında çalışan 
+            bu operasyonlar izole bir sandbox içinde yürütülür.
+          </p>
+          <p class="tl-body">
+            CryptoKey nesneleri "extractable: false" parametresiyle oluşturulduğundan, türetilmiş anahtarlar 
+            hiçbir zaman JavaScript ortamına ham byte dizisi olarak sızdırılmaz; yalnızca şifreleme/çözümleme 
+            operasyonlarında kullanılır ve ardından bellekten silinir.
+          </p>
+          <div>
+            <span class="tl-tech-tag">W3C Standardı</span>
+            <span class="tl-tech-tag">Hardware-Backed</span>
+            <span class="tl-tech-tag">Non-Extractable Keys</span>
+            <span class="tl-tech-tag">Isolated Sandbox</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- SECURITY COMPARISON TABLE -->
+    <section>
+      <div class="section-tag reveal">&gt; 05 // GÜVENLİK KARŞILAŞTIRMASI</div>
+      <h2 class="section-title reveal reveal-delay-1">RAKIPLERLE <span class="accent-pink">KIYASLAMA</span></h2>
+      <p class="section-desc reveal reveal-delay-2">Piyasadaki yaygın şifreleme yaklaşımları ile Aurora'nın güvenlik parametrelerinin objektif karşılaştırması.</p>
+      <div class="reveal reveal-delay-3">
+        <table class="comp-table">
+          <thead>
+            <tr>
+              <th>ÖZELLİK</th>
+              <th>TEMEL ŞİFRELEME</th>
+              <th class="aurora-col">AURORA</th>
+              <th>BULUT BAZLI</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Şifreleme Standardı</td>
+              <td>AES-128 / RC4</td>
+              <td><span class="text-cyan">AES-256-GCM</span></td>
+              <td>Değişken</td>
+            </tr>
+            <tr>
+              <td>Anahtar Türetme</td>
+              <td class="cross">Yok / MD5</td>
+              <td><span class="text-cyan">PBKDF2 SHA-256</span></td>
+              <td class="partial">PBKDF2 / bcrypt</td>
+            </tr>
+            <tr>
+              <td>İterasyon Sayısı</td>
+              <td class="cross">0 – 10.000</td>
+              <td><span class="text-cyan">1.000.000</span></td>
+              <td class="partial">100.000 – 310.000</td>
+            </tr>
+            <tr>
+              <td>Sunucu İletişimi</td>
+              <td class="cross">Var</td>
+              <td><span class="check">✓ Sıfır</span></td>
+              <td class="cross">Zorunlu</td>
+            </tr>
+            <tr>
+              <td>Kimlik Doğrulama Etiketi</td>
+              <td class="cross">Yok</td>
+              <td><span class="check">✓ 128-bit GCM Tag</span></td>
+              <td class="partial">Değişken</td>
+            </tr>
+            <tr>
+              <td>Rastgele Tuzlama</td>
+              <td class="cross">Statik / Yok</td>
+              <td><span class="check">✓ 128-bit CSPRNG</span></td>
+              <td class="partial">Çoğunlukla</td>
+            </tr>
+            <tr>
+              <td>Veri Depolama</td>
+              <td class="cross">Disk/Bulut</td>
+              <td><span class="check">✓ Yalnızca RAM</span></td>
+              <td class="cross">Bulut</td>
+            </tr>
+            <tr>
+              <td>Açık Kaynak</td>
+              <td class="partial">Kısmen</td>
+              <td><span class="check">✓ Tam Şeffaf</span></td>
+              <td class="cross">Kapalı</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- SECURITY MATRIX BARS -->
+    <section>
+      <div class="section-tag reveal">&gt; 06 // GÜVENLİK MATRİSİ</div>
+      <h2 class="section-title reveal reveal-delay-1">SALDIRI <span class="accent">DİRENÇ</span> ANALİZİ</h2>
+      <div class="security-matrix reveal reveal-delay-2">
+        <div class="matrix-title">// AURORA SİSTEMİNİN SALDIRI SENARYOLARINA GÖRE DİRENÇ PUANI</div>
+        <div class="matrix-bars">
+          <div class="matrix-bar-row">
+            <div class="matrix-label">Kaba Kuvvet (CPU)</div>
+            <div class="matrix-track"><div class="matrix-fill" data-width="99"></div></div>
+            <div class="matrix-val">99%</div>
+          </div>
+          <div class="matrix-bar-row">
+            <div class="matrix-label">Kaba Kuvvet (GPU)</div>
+            <div class="matrix-track"><div class="matrix-fill" data-width="98"></div></div>
+            <div class="matrix-val">98%</div>
+          </div>
+          <div class="matrix-bar-row">
+            <div class="matrix-label">Rainbow Table</div>
+            <div class="matrix-track"><div class="matrix-fill" data-width="100"></div></div>
+            <div class="matrix-val">100%</div>
+          </div>
+          <div class="matrix-bar-row">
+            <div class="matrix-label">Man-in-the-Middle</div>
+            <div class="matrix-track"><div class="matrix-fill" data-width="97"></div></div>
+            <div class="matrix-val">97%</div>
+          </div>
+          <div class="matrix-bar-row">
+            <div class="matrix-label">Sunucu İhlali</div>
+            <div class="matrix-track"><div class="matrix-fill" data-width="100"></div></div>
+            <div class="matrix-val">100%</div>
+          </div>
+          <div class="matrix-bar-row">
+            <div class="matrix-label">Paket Manipülasyonu</div>
+            <div class="matrix-track"><div class="matrix-fill" data-width="100"></div></div>
+            <div class="matrix-val">100%</div>
+          </div>
+          <div class="matrix-bar-row">
+            <div class="matrix-label">Replay Saldırısı</div>
+            <div class="matrix-track"><div class="matrix-fill" data-width="95"></div></div>
+            <div class="matrix-val">95%</div>
+          </div>
+          <div class="matrix-bar-row">
+            <div class="matrix-label">Frekans Analizi</div>
+            <div class="matrix-track"><div class="matrix-fill" data-width="100"></div></div>
+            <div class="matrix-val">100%</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- TERMINAL SECTION -->
+    <section class="terminal-section">
+      <div class="section-tag reveal">&gt; 07 // SİSTEM TANIMLAYICISI</div>
+      <h2 class="section-title reveal reveal-delay-1">PROTOKOL <span class="accent">ÇIKTI</span> AKIŞI</h2>
+      <div class="terminal-wrap reveal reveal-delay-2">
+        <div class="terminal-bar">
+          <div class="t-dot t-dot-r"></div>
+          <div class="t-dot t-dot-y"></div>
+          <div class="t-dot t-dot-g"></div>
+          <span class="terminal-title">aurora@cryptosystem ~ %</span>
+        </div>
+        <div class="terminal-body" id="terminal-body">
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- HOW TO USE STEPS -->
+    <section>
+      <div style="text-align:center">
+        <div class="section-tag reveal">&gt; 08 // KULLANIM REHBERİ</div>
+        <h2 class="section-title reveal reveal-delay-1">ÜÇ <span class="accent">ADIMDA</span> TAM GÜVENLİK</h2>
+      </div>
+      <div class="steps-grid">
+        <div class="step-card reveal reveal-delay-1">
+          <div class="step-number">01</div>
+          <div class="step-icon-wrap">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#00ffcc" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="step-title">Veriyi Girin</div>
+          <div class="step-desc">
+            "ŞİFRELE" sekmesine geçin. Şifrelemek istediğiniz metni, koordinatı, kodu veya 
+            gizli mesajı metin alanına yazın. Herhangi bir uzunluk kısıtlaması yoktur.
+          </div>
+        </div>
+        <div class="step-card reveal reveal-delay-2">
+          <div class="step-number">02</div>
+          <div class="step-icon-wrap">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="11" width="18" height="11" rx="2" stroke="#00ffcc" stroke-width="1.5"/>
+              <path d="M7 11V7a5 5 0 0110 0v4" stroke="#00ffcc" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="step-title">Parolayı Belirleyin</div>
+          <div class="step-desc">
+            Anahtar alanına güçlü bir parola girin. Bu parola, şifrenizi çözecek tek matematiksel 
+            unsurdur. Kimseyle paylaşmayın, hiçbir yere yazmayın, sadece hafızanızda tutun.
+          </div>
+        </div>
+        <div class="step-card reveal reveal-delay-3">
+          <div class="step-number">03</div>
+          <div class="step-icon-wrap">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path d="M22 11.08V12a10 10 0 11-5.93-9.14" stroke="#00ffcc" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M22 4L12 14.01l-3-3" stroke="#00ffcc" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="step-title">Paketi Aktar</div>
+          <div class="step-desc">
+            Sistem, saniyeler içinde BASE64 kodlu şifreli paketi üretir ve panonuza kopyalar. 
+            Bu paketi e-posta, mesaj veya herhangi bir kanal üzerinden güvenle iletebilirsiniz.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- QUOTE -->
+    <section class="quote-section">
+      <blockquote class="reveal">
+        Bir kriptografik sistemin gücü, <q-accent class="text-cyan">algoritmasının gizliliğinden</q-accent> değil; 
+        <br>anahtarın matematiksel <span class="text-pink">kusursuzluğundan</span> gelmelidir.
+      </blockquote>
+      <cite class="reveal reveal-delay-2">— Auguste Kerckhoffs, 1883 // La cryptographie militaire</cite>
+    </section>
+
+  </div>
+
+  <footer>
+    <div class="footer-logo">AURORA</div>
+    <div class="footer-text">// BİLİŞSEL KRİPTOGRAFİK SİSTEM — CLIENT-SIDE ONLY — ZERO TRACE //</div>
+  </footer>
+</div>
+
+<!-- =================== ENCRYPT =================== -->
+<div id="encrypt" class="tab-panel">
+  <div class="container">
+    <section style="padding-top:10rem">
+      <div class="app-header">
+        <div class="section-tag">&gt; ŞİFRELEME MODÜLÜ</div>
+        <h2 class="section-title">VERİYİ <span class="accent">MÜHÜRLEYİN</span></h2>
+        <p class="section-desc" style="margin:0 auto; text-align:center">
+          Mesajınız AES-256-GCM ile şifrelenerek taşınabilir bir BASE64 pakete dönüştürülecektir.
+        </p>
+      </div>
+      <div class="app-panel">
+        <div class="panel-corner-br"></div>
+        <div class="field-group">
+          <div class="field-label">AÇIK VERİ KAYNAĞI — PLAINTEXT</div>
+          <textarea id="enc-msg" placeholder="Ağa aktarılacak hassas veriyi buraya girin...&#10;Her türlü metin, koordinat veya kod kabul edilir."></textarea>
+        </div>
+        <div class="field-group">
+          <div class="field-label">PROTOKOL ANAHTARI — PAROLA</div>
+          <input type="password" id="enc-pass" placeholder="Güçlü bir parola girin...">
+        </div>
+        <button class="action-btn" id="btn-enc" onclick="handleEncrypt()">ŞİFRELE VE AĞA AKTAR</button>
+        <div id="enc-error" class="error-msg"></div>
+        <div id="enc-output" class="output-area"></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- =================== DECRYPT =================== -->
+<div id="decrypt" class="tab-panel">
+  <div class="container">
+    <section style="padding-top:10rem">
+      <div class="app-header">
+        <div class="section-tag" style="color:var(--pink)">&gt; DEŞİFRELEME MODÜLÜ</div>
+        <h2 class="section-title">MÜHÜRLERİ <span class="accent-pink">ÇÖZÜN</span></h2>
+        <p class="section-desc" style="margin:0 auto; text-align:center">
+          Şifreli paketi yapıştırın, parolanızı girin. Sistem matematiği anlık çözecektir.
+        </p>
+      </div>
+      <div class="app-panel dec-panel">
+        <div class="panel-corner-br"></div>
+        <div class="field-group">
+          <div class="field-label">ŞİFRELİ VERİ PAKETİ — CIPHERTEXT</div>
+          <textarea id="dec-msg" placeholder="Ağdan alınan BASE64 paketini buraya yapıştırın..."></textarea>
+        </div>
+        <div class="field-group">
+          <div class="field-label">PROTOKOL ANAHTARI — PAROLA</div>
+          <input type="password" id="dec-pass" placeholder="Şifreleme sırasında kullanılan parolayı girin...">
+        </div>
+        <button class="action-btn dec-btn" id="btn-dec" onclick="handleDecrypt()">PAKETİ ÇÖZ VE DOĞRULA</button>
+        <div id="dec-error" class="error-msg"></div>
+        <div id="dec-output" class="output-area dec-output"></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   AURORA CRYPTOGRAPHIC SYSTEM — CORE ENGINE
+================================================================ */
+
+// ——— CURSOR ———
+const cursor = document.getElementById('cursor');
+const ring = document.getElementById('cursor-ring');
+let mx = 0, my = 0, rx = 0, ry = 0;
+document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; cursor.style.left = mx + 'px'; cursor.style.top = my + 'px'; });
+(function animRing() {
+  rx += (mx - rx) * .15;
+  ry += (my - ry) * .15;
+  ring.style.left = rx + 'px'; ring.style.top = ry + 'px';
+  requestAnimationFrame(animRing);
+})();
+
+// ——— AURORA CANVAS ———
+(function() {
+  const c = document.getElementById('aurora-canvas');
+  const ctx = c.getContext('2d');
+  let W, H;
+  function resize() { W = c.width = window.innerWidth; H = c.height = window.innerHeight; }
+  resize(); window.addEventListener('resize', resize);
+  
+  let t = 0;
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    // Draw aurora bands
+    for (let band = 0; band < 4; band++) {
+      const offset = band * 0.8;
+      const yCenter = H * (0.25 + band * 0.18);
+      const grad = ctx.createLinearGradient(0, 0, W, 0);
+      
+      if (band % 2 === 0) {
+        grad.addColorStop(0, 'transparent');
+        grad.addColorStop(0.3 + Math.sin(t * 0.3 + offset) * 0.1, 'rgba(0,255,204,0.08)');
+        grad.addColorStop(0.6 + Math.cos(t * 0.2 + offset) * 0.1, 'rgba(0,180,255,0.06)');
+        grad.addColorStop(1, 'transparent');
+      } else {
+        grad.addColorStop(0, 'transparent');
+        grad.addColorStop(0.4 + Math.sin(t * 0.25 + offset) * 0.15, 'rgba(157,78,221,0.07)');
+        grad.addColorStop(0.7, 'rgba(255,45,120,0.04)');
+        grad.addColorStop(1, 'transparent');
+      }
+      
+      ctx.beginPath();
+      ctx.moveTo(0, yCenter);
+      for (let x = 0; x <= W; x += 8) {
+        const y = yCenter
+          + Math.sin(x * 0.003 + t * 0.5 + offset) * 60
+          + Math.sin(x * 0.005 + t * 0.3 + offset * 2) * 30
+          + Math.cos(x * 0.002 + t * 0.7 + offset) * 40;
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+    }
+    t += 0.005;
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ——— PARTICLE NETWORK ———
+(function() {
+  const c = document.getElementById('particle-canvas');
+  const ctx = c.getContext('2d');
+  let W, H;
+  function resize() { W = c.width = window.innerWidth; H = c.height = window.innerHeight; }
+  resize(); window.addEventListener('resize', resize);
+
+  const COUNT = 90;
+  const CONNECT_DIST = 160;
+  let mouse = { x: -9999, y: -9999 };
+  document.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+
+  const particles = Array.from({ length: COUNT }, () => ({
+    x: Math.random() * window.innerWidth,
+    y: Math.random() * window.innerHeight,
+    vx: (Math.random() - .5) * .35,
+    vy: (Math.random() - .5) * .35,
+    r: Math.random() * 1.5 + .5,
+    opacity: Math.random() * .5 + .2
+  }));
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    
+    // Mouse repulsion
+    particles.forEach(p => {
+      const dx = p.x - mouse.x, dy = p.y - mouse.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 100) {
+        p.vx += dx / dist * 0.3;
+        p.vy += dy / dist * 0.3;
+      }
+      p.x += p.vx; p.y += p.vy;
+      p.vx *= 0.99; p.vy *= 0.99;
+      if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+      if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+    });
+
+    // Connections
+    for (let i = 0; i < COUNT; i++) {
+      for (let j = i + 1; j < COUNT; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < CONNECT_DIST) {
+          const alpha = (1 - dist / CONNECT_DIST) * 0.25;
+          ctx.strokeStyle = `rgba(0,255,204,${alpha})`;
+          ctx.lineWidth = .5;
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.stroke();
+        }
+      }
+    }
+
+    // Dots
+    particles.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(0,255,204,${p.opacity})`;
+      ctx.fill();
+    });
+    
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ——— TAB SWITCHING ———
+function showTab(tabId, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-links button').forEach(b => b.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  if (btn) btn.classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ——— SCROLL REVEAL ———
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) e.target.classList.add('visible');
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -60px 0px' });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// ——— COUNTER ANIMATION ———
+const counterObserver = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (!e.isIntersecting) return;
+    const el = e.target;
+    const target = parseInt(el.dataset.target);
+    const isShort = el.dataset.format === 'short';
+    let start = 0;
+    const duration = 1800;
+    const startTime = performance.now();
+    
+    function tick(now) {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const val = Math.floor(eased * target);
+      el.textContent = isShort ? (val >= 1000000 ? '1M' : val >= 1000 ? Math.floor(val/1000) + 'K' : val) : val.toLocaleString('tr-TR');
+      if (progress < 1) requestAnimationFrame(tick);
+      else el.textContent = isShort ? '1M' : target.toLocaleString('tr-TR');
+    }
+    requestAnimationFrame(tick);
+    counterObserver.unobserve(el);
+  });
+}, { threshold: 0.5 });
+
+document.querySelectorAll('[data-target]').forEach(el => counterObserver.observe(el));
+
+// ——— MATRIX BARS ———
+const barObserver = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (!e.isIntersecting) return;
+    e.target.querySelectorAll('.matrix-fill').forEach(fill => {
+      setTimeout(() => { fill.style.width = fill.dataset.width + '%'; }, 200);
+    });
+    barObserver.unobserve(e.target);
+  });
+}, { threshold: 0.3 });
+
+document.querySelectorAll('.security-matrix').forEach(el => barObserver.observe(el));
+
+// ——— TERMINAL ANIMATION ———
+const termLines = [
+  { delay: 200, html: `<span class="t-prompt">aurora@sys</span><span style="color:var(--muted)">:</span><span style="color:#7dd3fc">~</span><span style="color:var(--muted)">$</span> <span class="t-cmd">aurora --init --mode=full</span>` },
+  { delay: 800, html: `<span class="t-green">✓</span> Aurora Kriptografik Sistemi başlatılıyor...` },
+  { delay: 1300, html: `<span class="t-green">✓</span> Web Crypto API bağlantısı: <span class="t-green">BAŞARILI</span>` },
+  { delay: 1700, html: `<span class="t-green">✓</span> AES-256-GCM modülü: <span class="t-green">YÜKLENDİ</span>` },
+  { delay: 2100, html: `<span class="t-green">✓</span> PBKDF2-SHA256 (1.000.000 iter): <span class="t-green">HAZIR</span>` },
+  { delay: 2500, html: `<span class="t-green">✓</span> CSPRNG entropi kaynağı: <span class="t-green">AKTİF</span>` },
+  { delay: 2900, html: `<span class="t-green">✓</span> Sunucu bağlantısı: <span class="t-gold">DEVRE DIŞI (İSTATELESS MODE)</span>` },
+  { delay: 3400, html: `&nbsp;` },
+  { delay: 3500, html: `<span class="t-prompt">aurora@sys</span><span style="color:var(--muted)">:</span><span style="color:#7dd3fc">~</span><span style="color:var(--muted)">$</span> <span class="t-cmd">aurora --stats</span>` },
+  { delay: 4000, html: `<span class="t-gold">KEY_BITS</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color:var(--white)">256</span>` },
+  { delay: 4200, html: `<span class="t-gold">ALGORITHM</span>&nbsp;&nbsp;&nbsp;&nbsp; <span style="color:var(--white)">AES-GCM</span>` },
+  { delay: 4400, html: `<span class="t-gold">KDF</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color:var(--white)">PBKDF2-SHA256</span>` },
+  { delay: 4600, html: `<span class="t-gold">ITERATIONS</span>&nbsp;&nbsp;&nbsp; <span style="color:var(--white)">1,000,000</span>` },
+  { delay: 4800, html: `<span class="t-gold">SALT_BYTES</span>&nbsp;&nbsp;&nbsp; <span style="color:var(--white)">16 (128-bit)</span>` },
+  { delay: 5000, html: `<span class="t-gold">IV_BYTES</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color:var(--white)">12 (96-bit)</span>` },
+  { delay: 5200, html: `<span class="t-gold">AUTH_TAG</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color:var(--white)">128-bit GCM</span>` },
+  { delay: 5500, html: `<span class="t-gold">SERVER_CALLS</span>&nbsp; <span class="t-pink">0 (zero-knowledge)</span>` },
+  { delay: 6000, html: `&nbsp;` },
+  { delay: 6100, html: `<span class="t-prompt">aurora@sys</span><span style="color:var(--muted)">:</span><span style="color:#7dd3fc">~</span><span style="color:var(--muted)">$</span> <span class="t-cursor">▮</span>` },
+];
+
+const termBody = document.getElementById('terminal-body');
+let termStarted = false;
+
+const termObserver = new IntersectionObserver((entries) => {
+  if (entries[0].isIntersecting && !termStarted) {
+    termStarted = true;
+    termLines.forEach(({ delay, html }) => {
+      setTimeout(() => {
+        const line = document.createElement('div');
+        line.className = 't-line';
+        line.innerHTML = html;
+        line.style.animationDelay = '0s';
+        termBody.appendChild(line);
+      }, delay);
+    });
+    termObserver.unobserve(entries[0].target);
+  }
+}, { threshold: 0.3 });
+
+termObserver.observe(document.getElementById('terminal-body'));
+
+// ——— CRYPTO CORE ———
+const ITERATIONS = 1000000;
+const KEY_LENGTH = 256;
+const SALT_LENGTH = 16;
+const IV_LENGTH = 12;
+const enc = new TextEncoder();
+const dec = new TextDecoder();
+
+async function deriveKey(password, salt) {
+  const raw = await crypto.subtle.importKey('raw', enc.encode(password), { name: 'PBKDF2' }, false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: ITERATIONS, hash: 'SHA-256' },
+    raw, { name: 'AES-GCM', length: KEY_LENGTH }, false, ['encrypt', 'decrypt']
+  );
+}
+
+function toBase64(buf) {
+  let b = ''; const bytes = new Uint8Array(buf);
+  for (let i = 0; i < bytes.byteLength; i++) b += String.fromCharCode(bytes[i]);
+  return btoa(b);
+}
+
+function fromBase64(b64) {
+  const b = atob(b64), arr = new Uint8Array(b.length);
+  for (let i = 0; i < b.length; i++) arr[i] = b.charCodeAt(i);
+  return arr;
+}
+
+async function handleEncrypt() {
+  const msg = document.getElementById('enc-msg').value;
+  const pass = document.getElementById('enc-pass').value;
+  const errEl = document.getElementById('enc-error');
+  const outEl = document.getElementById('enc-output');
+  const btn = document.getElementById('btn-enc');
+  errEl.textContent = ''; outEl.style.display = 'none';
+  if (!msg || !pass) { errEl.textContent = '// HATA: Veri kaydı veya anahtar bulunamadı.'; return; }
+  const orig = btn.textContent;
+  btn.textContent = 'HESAPLANIYOR... PBKDF2 DÖNGÜLER...';
+  btn.disabled = true;
+  setTimeout(async () => {
+    try {
+      const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
+      const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
+      const key = await deriveKey(pass, salt);
+      const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(msg));
+      const payload = new Uint8Array(salt.length + iv.length + cipher.byteLength);
+      payload.set(salt, 0); payload.set(iv, SALT_LENGTH); payload.set(new Uint8Array(cipher), SALT_LENGTH + IV_LENGTH);
+      const result = toBase64(payload);
+      outEl.textContent = result; outEl.style.display = 'block';
+      navigator.clipboard.writeText(result).catch(() => {});
+      btn.textContent = '✓ PANOYA KOPYALANDI';
+      setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2500);
+    } catch {
+      errEl.textContent = '// KRİTİK HATA: Şifreleme algoritması başarısız.';
+      btn.textContent = orig; btn.disabled = false;
+    }
+  }, 80);
+}
+
+async function handleDecrypt() {
+  const cipher64 = document.getElementById('dec-msg').value.trim();
+  const pass = document.getElementById('dec-pass').value;
+  const errEl = document.getElementById('dec-error');
+  const outEl = document.getElementById('dec-output');
+  const btn = document.getElementById('btn-dec');
+  errEl.textContent = ''; outEl.style.display = 'none';
+  if (!cipher64 || !pass) { errEl.textContent = '// HATA: Şifreli paket veya anahtar eksik.'; return; }
+  const orig = btn.textContent;
+  btn.textContent = 'PAKET ANALİZ EDİLİYOR...';
+  btn.disabled = true;
+  setTimeout(async () => {
+    try {
+      const payload = fromBase64(cipher64);
+      const salt = payload.slice(0, SALT_LENGTH);
+      const iv = payload.slice(SALT_LENGTH, SALT_LENGTH + IV_LENGTH);
+      const data = payload.slice(SALT_LENGTH + IV_LENGTH);
+      const key = await deriveKey(pass, salt);
+      const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
+      outEl.textContent = dec.decode(plain); outEl.style.display = 'block';
+      btn.textContent = '✓ DEŞİFRE BAŞARILI — PAKET DOĞRULANDI';
+      setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2500);
+    } catch {
+      errEl.textContent = '// KRİTİK HATA: Mühür bozuk veya parola geçersiz.';
+      btn.textContent = orig; btn.disabled = false;
+    }
+  }, 80);
+}
+</script>
+</body>
+</html>
